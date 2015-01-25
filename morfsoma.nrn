@@ -1,0 +1,32 @@
+/* apical[117] diam changed from 1 to 0.4 */
+/* added axon */
+/* lambda checked */
+{NumSoma=13}
+create soma[NumSoma]
+
+soma[0]  {nseg=1 diam= 3.4  L= .5  }
+soma[1]  {nseg=1 diam= 3.4  L= .1  }
+soma[2]  {nseg=1 diam= 5.8  L= .5852348  }
+soma[3]  {nseg=1 diam= 7.4  L= 2.362393  }
+soma[4]  {nseg=1 diam= 8.4  L= 1.030922  }
+soma[5]  {nseg=1 diam= 9  L= 5.08973  }
+soma[6]  {nseg=1 diam= 8.4  L= 2.161421  }
+soma[7]  {nseg=1 diam= 7.4  L= 1.391761  }
+soma[8]  {nseg=1 diam= 7  L= .7244999  }
+soma[9]  {nseg=1 diam= 6.8  L= 1.021421  }
+soma[10]  {nseg=1 diam= 5.8  L= .8354636  }
+soma[11]  {nseg=1 diam= 4.8  L= .6500001  }
+soma[12]  {nseg=1 diam= 4.2  L= 1.947434  }
+
+soma[0]  connect soma[1]  (0), 1
+soma[1]  connect soma[2]  (0), 1
+soma[2]  connect soma[3]  (0), 1
+soma[3]  connect soma[4]  (0), 1
+soma[4]  connect soma[5]  (0), 1
+soma[5]  connect soma[6]  (0), 1
+soma[6]  connect soma[7]  (0), 1
+soma[7]  connect soma[8]  (0), 1
+soma[8]  connect soma[9]  (0), 1
+soma[9]  connect soma[10]  (0), 1
+soma[10]  connect soma[11]  (0), 1
+soma[11]  connect soma[12]  (0), 1

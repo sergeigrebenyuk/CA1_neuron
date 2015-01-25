@@ -1,0 +1,283 @@
+/*
+1 - two-state NMDA
+2 - five-state NMDA
+0 - alphasynapse
+*/
+MODEL = 2
+numsyn = 1
+seg50 = 0  // nseg = 50 if 1
+
+load_file("nrngui.hoc")
+//cvode.active(1)
+
+mid=12
+dist=27
+secondorder=2
+FARADAY=96520
+PI=3.14159
+
+Rm = 28000
+RmDend = Rm/2
+RmSoma = Rm
+RmAx = Rm
+
+Cm    = 1
+CmSoma= Cm
+CmAx  = Cm
+CmDend = Cm*2
+
+RaAll= 150
+RaSoma=150  
+RaAx = 50
+
+Vrest = -65
+dt = 0.025
+gna =  .032
+AXONM = 2
+gkdr = 0.01
+celsius = 34.0  
+KMULT =  0.048
+KMULTP = 0.048
+
+gsyn=4000e-6
+tstop = 500
+runStopAt = tstop
+steps_per_ms = 1/dt
+celsius = 36
+v_init = -70
+
+
+xopen("n160_mod.nrn")             // geometry file
+//xopen("topology.hoc")             // geometry file
+
+xopen("1.ses")
+
+tstim=30
+strength = 0.0001/*namps*/
+tstop=30
+
+
+
+objref g, b, postsyn[NumApical*numsyn],vc
+objref stim[NumApical*numsyn]
+create presyn[NumApical*numsyn]
+//----------------------------------------------------------------------------
+//  presynaptic compartments and insert passive properties
+//----------------------------------------------------------------------------
+
+for i = 0,NumApical-1  {
+for j = 0, numsyn-1   { 
+
+access presyn[i*numsyn+j]
+
+ // diam=10
+ pt3dadd(11*i-500,11*j-300,24,7)
+ pt3dadd(11*i-500,11*j-300+5,24,7)
+
+  L=7
+  insert pas
+  g_pas=1/5000
+  e_pas=v_init
+
+insert hh2
+ek = -90
+gnabar_hh2 = 0.1
+gkbar_hh2 = 0.03
+
+
+stim[i*numsyn+j] = new IClamp(.5)
+stim[i*numsyn+j].del = 0//(i*numsyn+j)/1000
+stim[i*numsyn+j].dur = 2            // increase stim.dur to get a burst of presynaptic spikes
+stim[i*numsyn+j].amp = 0.1
+
+if (MODEL == 2) {
+
+insert rel              // transmitter release
+Ves_rel = 0.01          // conc of vesicles (mM)
+Fmax_rel = 0.001        // tot conc of proteins (F and V) (mM)
+b_rel   = 1e16          // rate cst for Ca++ binding to fusion factor
+u_rel   = 0.1           // rate cst for Ca++ unbinding
+k1_rel  = 1000          // rate cst for activation of vesicle
+k2_rel  = 0.1           // rate cst for deactivation of vesicle
+k3_rel  = 4             // rate cst for exocytosis
+nt_rel  = 10000         // number of transmitter molecule per vesicle
+kh_rel  = 10            // transmitter hydolysis constant
+
+insert caL              // HV Ca++ channel for transmitter release
+p_caL=0.0002
+q_caL=10
+Ra_caL=1.6
+Rb_caL=1.6
+
+
+insert cad              // Ca++ ATPase pump
+kd_cad = 1e-5
+kt_cad = 1e-3           // fast Ca++ removal
+depth_cad = 1
+taur_cad = 1e10
+}
+
+}
+}
+
+//----------------------------------------------------------------------------
+//  insert postsynaptic mechansisms
+//----------------------------------------------------------------------------
+
+
+soma[5] distance()   // set origin to section soma[5]
+access soma[5]
+soma[5] {      
+                vc = new SEClamp(0.5)
+                vc.dur1 = 40
+                vc.amp1 = -45
+                vc.rs = 2
+                
+
+                /*
+                objref vc
+                vc = new IClamp(0.5)
+                vc.dur = 5
+                vc.amp = 5
+                vc.del = 10
+                 */
+                
+}
+/*
+axon[1] {
+                insert nax    gbar_nax=gna * AXONM ena=55
+                insert kdr gkdrbar_kdr=gkdr ek=-90
+                insert pas e_pas=Vrest g_pas = 1/RmAx Ra=RaAx cm=CmAx
+                insert kap gkabar_kap = KMULTP*0.2 ek=-90
+}
+
+axon[0] {   
+                insert nax  gbar_nax=gna * AXONM ena=55
+                insert kdr  gkdrbar_kdr=gkdr ek=-90
+                insert pas e_pas=Vrest g_pas = 1/RmAx Ra=RaAx cm=CmAx
+                insert kap gkabar_kap = KMULTP*0.2 ek=-90
+}
+*/
+
+for i=0,NumSoma-1 soma[i] {   
+                insert na3  gbar_na3=gna  ena=55
+                insert kdr gkdrbar_kdr=gkdr ek=-90
+                ar2_na3=0.8
+                insert kap gkabar_kap = KMULTP ek=-90
+                insert pas e_pas=Vrest g_pas = 1/RmSoma Ra=RaSoma cm=CmSoma
+}
+
+for i=0,NumBasal-1 basal[i] {
+                insert na3    gbar_na3=gna ena=55
+                insert kdr gkdrbar_kdr=gkdr ek=-90
+                ar2_na3=1
+                insert kap gkabar_kap=KMULTP ek=-90
+                insert pas e_pas=Vrest g_pas = 1/RmDend Ra=RaAll cm=CmDend
+}
+                
+for i=0,NumApical-1 apical[i] {
+//if (i<40) {printf(" %d, %g \n",i,distance(0.5))}
+               if (seg50 == 1 ){ 
+               nseg = 50
+               soma[5] distance()   // set origin to section soma[5]
+               }
+              insert pas e_pas=Vrest g_pas = 1/RmDend Ra=RaAll  cm=CmDend
+              for (x){ xdist = distance(x)
+                        }
+                        if (diam>0.5 && distance(0.5)<500) {
+                insert na3 ena=55
+                ar2_na3=0.5
+                gbar_na3=gna
+                insert kdr ek=-90
+                gkdrbar_kdr=gkdr
+                insert kap ek=-90
+                insert kad ek=-90
+                gkabar_kap=0
+                gkabar_kad=0
+
+              for (x){ xdist = distance(x)
+                if (xdist>500) {xdist=500}
+                if (xdist > 100){
+                        gkabar_kad(x) = KMULT*(1+xdist/100)
+                } else {
+                        gkabar_kap(x) = KMULTP*(1+xdist/100)
+                        }
+                                        }
+               
+                } 
+
+
+for j = 0, numsyn-1 { 
+
+if (MODEL == 2) {
+//************************** NMDA-R 5-STATE MODEL **************************
+
+postsyn[i*numsyn+j] = new NMDA5()                   // create synapse
+postsyn[i*numsyn+j].loc(j/numsyn)                   // assign postsynaptic compartment
+setpointer postsyn[i*numsyn+j].C, presyn[i*numsyn+j].T_rel(0.5)            // assign presynaptic compartment
+
+Erev_NMDA5      = 0     //      (mV)    reversal potential (E_K)
+mg_NMDA5        = 0.5   //      put in zero magnesium for the demo
+
+
+// parameters from Hessler Shirke & Malinow 1993
+Rb_NMDA5        = 5e-3     //    (/uM /ms)       : binding               
+Ru_NMDA5        = 12.9e-3  //   (/ms)   : unbinding             
+Rd_NMDA5        = 8.4e-3   //   (/ms)   : desensitization
+Rr_NMDA5        = 6.8e-3   //   (/ms)   : resensitization 
+Ro_NMDA5        = 46.5e-3   //  (/ms)   : opening
+Rc_NMDA5        = 73.8e-3   //  (/ms)   : closing
+
+postsyn[i*numsyn+j].gmax            =  500//10000/numsyn    //50 //      (pS)    maximum conductance
+                  
+}
+
+if (MODEL == 1) {
+
+//************************** NMDA-R SIMPLE MODEL **************************
+postsyn[i*numsyn+j] = new NMDA()                  // create synapse
+postsyn[i*numsyn+j].loc(j/numsyn)                 // assign postsynaptic compartment
+setpointer postsyn[i*numsyn+j].pre, presyn[i*numsyn+j].v(0.5)    // assign presynaptic compartment
+
+Cmax_NMDA       = 1     //      (mM)     max transmitter concentration
+Cdur_NMDA       = 1     //     (ms)     transmitter duration (rising phase)
+Alpha_NMDA      = 0.72//0.072 //      (/ms mM)         forward (binding) rate
+Beta_NMDA       = 0.066//0.0066 //     (/ms)            backward (unbinding) rate
+Erev_NMDA       = 0     //      (mV)             reversal potential
+Prethresh_NMDA  = 0     //      (mV)             voltage level nec for release
+Deadtime_NMDA   = 1     //      (ms)     mimimum time between release events
+mg_NMDA         = 0.5     //      (mM)    physiological extracell magnesium
+postsyn[i*numsyn+j].gmax          = 0.01/numsyn //0.0002 //     (umho)           maximum conductance
+}
+
+if (MODEL == 0) {
+
+//************************** ART SYNAPSE **************************
+postsyn[i*numsyn+j] = new AlphaSynapse(j/numsyn)
+postsyn[i*numsyn+j].onset= 2
+postsyn[i*numsyn+j].gmax= 2//0.0002
+postsyn[i*numsyn+j].tau=0.002//0.05
+postsyn[i*numsyn+j].e = 0
+}                                         }                                 
+
+                                }
+forall Ra = 35
+        dt = 0.01
+        t=0
+        forall {v=Vrest}
+        finitialize(v)
+        fcurrent()
+
+         {
+for (x) {if (ismembrane("na3")||ismembrane("nax")){e_pas(x)=v(x)+(ina(x)+ik(x))/g_pas(x)
+                } else {
+        e_pas(x)=v(x)
+                        }
+                }
+}
+
+g = new Graph(1)
+g.size(0,30,-80,40)
+
+//g.view(0, -80, 30, 120, 0, 618, 907.2, 181.9)}
+g.addexpr("vc.i", 3, 1, 0.797006, 0.958267, 2)
